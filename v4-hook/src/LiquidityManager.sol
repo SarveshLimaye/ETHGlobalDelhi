@@ -14,7 +14,7 @@ import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
 import {Position} from "@uniswap/v4-core/src/libraries/Position.sol";
 import {SafeCallback} from "@uniswap/v4-periphery/src/base/SafeCallback.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-
+import {AaveConfig, IPool, UpdateLiquidityAave, AaveSwapParams, PoolMetadata} from "src/strategies/AaveConfig.sol";
 
 /// @notice Stores basic information about a user’s position
 struct PositionInfo {
@@ -34,7 +34,7 @@ struct PositionInfo {
 
 /// @notice Represents a liquidity range within a tick range
 /// @dev Ranges are used to manage concentrated liquidity across specific tick ranges
-struct LiquidityRange{
+struct LiquidityRange {
     /// @notice The lower tick boundary of the window
     int24 tickLower;
     /// @notice The upper tick boundary of the window
@@ -50,6 +50,9 @@ contract LiquidityRangeManager is SafeCallback, Ownable {
     // using JITLib for Pool.State;
     using StateLibrary for IPoolManager;
 
+    using AaveConfig for IPool;
+
+    IPool internal immutable aavePool;
 
     /// @notice Mapping from PoolId => tickLower => tickUpper => LiquidityRange
     mapping(PoolId => mapping(int24 => LiquidityRange)) public liquidityRanges;
@@ -63,8 +66,14 @@ contract LiquidityRangeManager is SafeCallback, Ownable {
     /// @notice Mapping from PoolId => tickSpacing for that pool
     mapping(PoolId => int24) internal poolSpacing;
 
+    constructor(
+        address poolManager,
+        address _aavePool
+    ) Ownable(msg.sender) SafeCallback(IPoolManager(poolManager)) {
+        aavePool = IPool(_aavePool);
+    }
 
-    constructor(address poolManager) Ownable(msg.sender) SafeCallback(IPoolManager(poolManager)) {}
-
-    function _unlockCallback(bytes calldata data) internal override returns (bytes memory) {}
+    function _unlockCallback(
+        bytes calldata data
+    ) internal override returns (bytes memory) {}
 }
