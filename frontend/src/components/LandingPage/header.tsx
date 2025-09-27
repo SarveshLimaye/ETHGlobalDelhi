@@ -43,9 +43,9 @@ export function Header() {
       "border-b backdrop-blur-sm sticky top-0 z-50 transition-all duration-300";
 
     if (currentSection === "hero") {
-      return `${baseClasses} navbar-hero border-border/30`;
-    } else if (currentSection === "features") {
       return `${baseClasses} navbar-features border-primary/40`;
+    } else if (currentSection === "features") {
+      return `${baseClasses} navbar-hero border-border/30`;
     } else if (scrolled) {
       return `${baseClasses} navbar-scrolled border-primary/30`;
     } else {
