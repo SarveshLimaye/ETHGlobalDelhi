@@ -1,69 +1,69 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {BaseHook} from "@openzeppelin/uniswap-hooks/src/base/BaseHook.sol";
-
-import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import {IPoolManager, SwapParams, ModifyLiquidityParams} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {LiquidityRangeManager} from "./LiquidityManager.sol";
+import {LiquidityRange,LiquidityManagerLib } from "./LiquidityManager.sol";
+import {SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
+import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
+import "./BaseHook.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
-import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
-import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 
-contract RefluxHook is BaseHook {
-    using PoolIdLibrary for PoolKey;
+contract RefluxHook is BaseHook,LiquidityRangeManager {
 
-    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {}
+    constructor(address _poolManager, address _aavePool,address _weth) 
+    LiquidityRangeManager(_poolManager,_aavePool, _weth) 
+    {}
 
-    function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
-        return Hooks.Permissions({
-            beforeInitialize: false,
-            afterInitialize: false,
-            beforeAddLiquidity: true,
-            afterAddLiquidity: false,
-            beforeRemoveLiquidity: false,
-            afterRemoveLiquidity: false,
-            beforeSwap: true,
-            afterSwap: true,
-            beforeDonate: false,
-            afterDonate: false,
-            beforeSwapReturnDelta: false,
-            afterSwapReturnDelta: false,
-            afterAddLiquidityReturnDelta: false,
-            afterRemoveLiquidityReturnDelta: false
-        });
-    }
-
-    // -----------------------------------------------
-    // NOTE: see IHooks.sol for function documentation
-    // -----------------------------------------------
-
-    function _beforeSwap(address, PoolKey calldata key, SwapParams calldata, bytes calldata)
-        internal
+    function beforeAddLiquidity(address sender, PoolKey calldata, ModifyLiquidityParams calldata, bytes calldata)
+        external
+        view
         override
-        returns (bytes4, BeforeSwapDelta, uint24)
-    {
-        
-        return (BaseHook.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
-    }
-
-    function _afterSwap(address, PoolKey calldata key, SwapParams calldata, BalanceDelta, bytes calldata)
-        internal
-        override
-        returns (bytes4, int128)
-    {
-      
-        return (BaseHook.afterSwap.selector, 0);
-    }
-
-    function _beforeAddLiquidity(address sender, PoolKey calldata key, ModifyLiquidityParams calldata, bytes calldata)
-        internal
-        override
+        onlyPoolManager
         returns (bytes4)
     {
-        // @dev - user can only add liquidity from hook 
-        require(sender == address(this), "Addition of liquidity only allowed from hook");
-        return BaseHook.beforeAddLiquidity.selector;
+        // @dev - user are allowed to add liquidity only through this hook
+        require(sender == address(this), "Error: Add liquidity from hook");
+        return (this.beforeAddLiquidity.selector);
     }
 
+    function beforeSwap(address, PoolKey calldata key, SwapParams calldata params, bytes calldata)
+        external
+        override
+        onlyPoolManager
+        returns (bytes4, BeforeSwapDelta, uint24)
+    {
+        _rebalanceLiquidity(key, params.zeroForOne, true);
+        return (this.beforeSwap.selector, toBeforeSwapDelta(0, 0), _swapFee(key));
+    }
+
+    function afterSwap(address, PoolKey calldata key, SwapParams calldata params, BalanceDelta, bytes calldata)
+        external
+        override
+        onlyPoolManager
+        returns (bytes4, int128)
+    {
+
+        (, int24 tick,,) = StateLibrary.getSlot0(poolManager, key.toId());
+        (, LiquidityRange memory next) = LiquidityManagerLib.getLiquidityRanges(_getPool(key.toId()), key.tickSpacing, params.zeroForOne);
+
+        if (params.zeroForOne) {
+            require(next.tickLower < tick, "Slippage");
+        } else {
+            require(next.tickUpper > tick, "Slippage");
+        }
+
+        _rebalanceLiquidity(key, params.zeroForOne, false);
+
+        return (this.afterSwap.selector, 0);
+    }
+
+    /**
+     * @notice Returns the swap fee for a given pool
+     * @dev Virtual function that can be overridden for dynamic fee logic
+     * @param key The pool key
+     * @return The swap fee for the pool
+     */
+    function _swapFee(PoolKey memory key) internal virtual returns (uint24) {
+        return key.fee;
+    }
 }
