@@ -92,7 +92,7 @@ contract RefluxHook is BaseHook, LiquidityRangeManager, IEntropyConsumer {
         );
         uint24 baseFee = key.fee;
         uint24 randomizedComponent = uint24(randomFactor % 100);
-        return baseFee;
+        return baseFee + randomizedComponent;
     }
 
     function entropyCallback(
