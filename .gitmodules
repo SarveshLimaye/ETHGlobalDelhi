@@ -1,0 +1,9 @@
+[submodule "v4-hook/lib/aave-v3-core"]
+	path = v4-hook/lib/aave-v3-core
+	url = https://github.com/aave/aave-v3-core
+[submodule "v4-hook/lib/aave-v3-origin"]
+	path = v4-hook/lib/aave-v3-origin
+	url = https://github.com/aave/aave-v3-origin
+[submodule "v4-hook/lib/openzeppelin-contracts"]
+	path = v4-hook/lib/openzeppelin-contracts
+	url = https://github.com/openZeppelin/openzeppelin-contracts
