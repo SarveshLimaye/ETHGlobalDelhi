@@ -297,7 +297,7 @@ contract RefluxHookTest is Test, AaveConstantsArbitrum{
         (,, int24 tickLower, int24 tickUpper) = _addLiquidity(LIQUIDITY_TO_ADD, 2);
 
         _removeLiquidity(
-            poolKey, ModifyLiquidityParams(tickLower, tickUpper, -LIQUIDITY_TO_ADD, bytes32(abi.encode(2)))
+            poolKey, ModifyLiquidityParams(tickLower, tickUpper, -LIQUIDITY_TO_ADD, bytes32(abi.encode(2))) ,2 
         );
     }
 
@@ -309,7 +309,7 @@ contract RefluxHookTest is Test, AaveConstantsArbitrum{
 
         // Remove liquidity
         (BalanceDelta liquidityDelta,) = _removeLiquidity(
-            poolKey, ModifyLiquidityParams(tickLower, tickUpper, -LIQUIDITY_TO_ADD, bytes32(abi.encode(1)))
+            poolKey, ModifyLiquidityParams(tickLower, tickUpper, -LIQUIDITY_TO_ADD, bytes32(abi.encode(1))) , 1
         );
 
         // Verify liquidity was removed
@@ -446,7 +446,7 @@ contract RefluxHookTest is Test, AaveConstantsArbitrum{
 
         // Remove liquidity
         (BalanceDelta liquidityDelta,) = _removeLiquidity(
-            poolKey, ModifyLiquidityParams(tickLower, tickUpper, -LIQUIDITY_TO_ADD, bytes32(abi.encode(1)))
+            poolKey, ModifyLiquidityParams(tickLower, tickUpper, -LIQUIDITY_TO_ADD, bytes32(abi.encode(1))) , 1
         );
 
         uint256 finalETH = testAccount.balance + IERC20(address(WETH)).balanceOf(address(this));
@@ -564,14 +564,14 @@ contract RefluxHookTest is Test, AaveConstantsArbitrum{
         uint256 ethAmount = uint128(amounts.amount0());
         require(ethAmount <= address(this).balance, "Insufficient ETH for liquidity");
 
-        (positionId,, feesAccrued) = hook.updateLiquidity{value: ethAmount}(poolKey, params);
+        (positionId,, feesAccrued) = hook.updateLiquidity{value: ethAmount}(poolKey, params, bytes32(abi.encode(multiplier)));
     }
 
-    function _removeLiquidity(PoolKey memory key, ModifyLiquidityParams memory params)
+    function _removeLiquidity(PoolKey memory key, ModifyLiquidityParams memory params, uint16 multiplier)
         private
         returns (BalanceDelta liquidityDelta, BalanceDelta feesAccrued)
     {
-        (, liquidityDelta, feesAccrued) = hook.updateLiquidity{value: 1_000}(key, params);
+        (, liquidityDelta, feesAccrued) = hook.updateLiquidity{value: 1_000}(key,params,bytes32(abi.encode(multiplier)));
     }
 
     function _swap(uint128 amountIn, bool zeroForOne) private {
