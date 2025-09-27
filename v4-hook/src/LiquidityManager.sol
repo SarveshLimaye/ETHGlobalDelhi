@@ -87,7 +87,6 @@ contract LiquidityRangeManager is SafeCallback, Ownable {
     function updateLiquidity(PoolKey memory key, ModifyLiquidityParams memory params)
         external
         payable
-        onlyOwner
         returns (bytes32 positionId, BalanceDelta principalDelta, BalanceDelta feesAccrued)
     {
         uint16 multiplier = uint16(uint256(params.salt));
