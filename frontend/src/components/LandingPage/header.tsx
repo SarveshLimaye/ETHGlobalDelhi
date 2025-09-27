@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -108,27 +109,14 @@ export function Header() {
             >
               GitHub
             </a>
-          </nav>
 
-          <div
-            className={`${
-              isMenuOpen ? "hidden" : "flex"
-            } md:flex items-center space-x-3 sm:space-x-4`}
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-sm px-4 py-2 bg-transparent border-primary/30 hover:border-primary/50"
-            >
-              View Docs
-            </Button>
-            <Button
-              size="sm"
-              className="bg-primary hover:bg-primary/90 text-sm px-4 py-2"
-            >
-              Get Started
-            </Button>
-          </div>
+            <ConnectButton
+              accountStatus={{
+                smallScreen: "avatar",
+                largeScreen: "full",
+              }}
+            />
+          </nav>
         </div>
       </div>
     </header>
