@@ -84,44 +84,74 @@ contract LiquidityRangeManager is SafeCallback, Ownable {
         if (msg.sender != address(WETH)) WETH.deposit{value: msg.value}();
     }
 
-    function updateLiquidity(PoolKey memory key, ModifyLiquidityParams memory params)
-        external
-        payable
-        returns (bytes32 positionId, BalanceDelta principalDelta, BalanceDelta feesAccrued)
-    {
-        uint16 multiplier = uint16(uint256(params.salt));
-        int128 totalLiquidity = int128(int256(params.liquidityDelta) * int256(uint256(multiplier)));
-        int24 nRanges = (params.tickUpper - params.tickLower) / key.tickSpacing;
+    function updateLiquidity(
+        PoolKey memory key,
+    ModifyLiquidityParams memory params,
+    bytes32 _multiplier
+)
+    external
+    payable
+    returns (bytes32 positionId, BalanceDelta principalDelta, BalanceDelta feesAccrued)
+{
+    // ---- pre-loop work ----
+    (uint16 multiplier, int128 totalLiquidity, int24 nRanges) =
+        _preCalc(params, key, _multiplier);
 
-        int24 lower = params.tickLower;
+    int24 lower = params.tickLower;
 
-        for (int24 i = 0; i < nRanges; i++) {
-            params.tickLower = lower;
-            params.tickUpper = lower + key.tickSpacing;
-            params.liquidityDelta = totalLiquidity;
+    // ---- core loop (unchanged) ----
+    for (int24 i = 0; i < nRanges; i++) {
+        params.tickLower = lower;
+        params.tickUpper = lower + key.tickSpacing;
+        params.liquidityDelta = totalLiquidity;
 
-            (BalanceDelta pd, BalanceDelta fa) = _updateLiquidity(key, params);
-            principalDelta = principalDelta + pd;
-            feesAccrued = feesAccrued + fa;
+        (BalanceDelta pd, BalanceDelta fa) = _updateLiquidity(key, params);
+        principalDelta = principalDelta + pd;
+        feesAccrued = feesAccrued + fa;
 
-            lower += key.tickSpacing;
-        }
-
-        positionId = Position.calculatePositionKey(msg.sender, params.tickLower, params.tickUpper, params.salt);
-        PositionInfo storage info = positionInfo[key.toId()][positionId];
-
-        info.owner = msg.sender;
-        info.tickLower = params.tickLower;
-        info.tickUpper = params.tickUpper;
-        info.liquidity = uint128(int128(info.liquidity) + int128(params.liquidityDelta));
-        info.multiplier = multiplier;
-
-        _resolve(key, principalDelta + feesAccrued, positionId);
-
-        _sweep(key);
+        lower += key.tickSpacing;
     }
 
+    // ---- position update ----
+    positionId = _updatePositionInfo(key, params, multiplier);
 
+    _resolve(key, principalDelta + feesAccrued, positionId);
+    _sweep(key);
+}
+
+function _preCalc(
+    ModifyLiquidityParams memory params,
+    PoolKey memory key,
+    bytes32 _multiplier
+)
+    internal
+    pure
+    returns (uint16 multiplier, int128 totalLiquidity, int24 nRanges)
+{
+    multiplier = uint16(uint256(_multiplier));
+    int256 scaled = int256(params.liquidityDelta) * int256(uint256(multiplier));
+    require(scaled <= type(int128).max && scaled >= type(int128).min, "Overflow");
+    totalLiquidity = int128(scaled);
+    nRanges = (params.tickUpper - params.tickLower) / key.tickSpacing;
+}
+
+function _updatePositionInfo(
+    PoolKey memory key,
+    ModifyLiquidityParams memory params,
+    uint16 multiplier
+)
+    internal
+    returns (bytes32 positionId)
+{
+    positionId = Position.calculatePositionKey(msg.sender, params.tickLower, params.tickUpper, params.salt);
+    PositionInfo storage info = positionInfo[key.toId()][positionId];
+
+    info.owner = msg.sender;
+    info.tickLower = params.tickLower;
+    info.tickUpper = params.tickUpper;
+    info.liquidity = uint128(int128(info.liquidity) + int128(params.liquidityDelta));
+    info.multiplier = multiplier;
+}
      /// @notice Modify liquidity in the pool
     function _updateLiquidity(PoolKey memory key, ModifyLiquidityParams memory params)
         internal
