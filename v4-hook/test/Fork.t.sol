@@ -20,7 +20,7 @@ import {Commands} from "./utils/Commands.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {LiquidityRange} from "../src/LiquidityManager.sol";
 import {LiquidityMath} from "../src/lib/LiquidityMath.sol";
-import {HookDeployer} from "./utils/HookDeployer.sol";
+import {HookDeployer} from "../src/HookDeployer.sol";
 
 contract RefluxHookTest is Test, AaveConstantsArbitrum{
     using StateLibrary for IPoolManager;
@@ -31,7 +31,7 @@ contract RefluxHookTest is Test, AaveConstantsArbitrum{
     //////////////////////////////////////////////////////////////*/
 
     // Well-funded account on Arbitrum for testing
-    address public constant WHALE = 0x0a8494F70031623C9C0043aff4D40f334b458b11;
+    address public constant WHALE = 0xEe7aE85f2Fe2239E27D9c1E23fFFe168D63b4055;
 
     // Test liquidity amount
     int128 private constant LIQUIDITY_TO_ADD = 1_000_000_000_000_000;
@@ -294,10 +294,10 @@ contract RefluxHookTest is Test, AaveConstantsArbitrum{
 
     function test_AddRemoveLeverage_Success() public poolInitialized {
         // execute liquidity addition (returns tick range)
-        (,, int24 tickLower, int24 tickUpper) = _addLiquidity(LIQUIDITY_TO_ADD, 4);
+        (,, int24 tickLower, int24 tickUpper) = _addLiquidity(LIQUIDITY_TO_ADD, 2);
 
         _removeLiquidity(
-            poolKey, ModifyLiquidityParams(tickLower, tickUpper, -LIQUIDITY_TO_ADD, bytes32(abi.encode(4)))
+            poolKey, ModifyLiquidityParams(tickLower, tickUpper, -LIQUIDITY_TO_ADD, bytes32(abi.encode(2)))
         );
     }
 
