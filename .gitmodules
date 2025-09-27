@@ -7,3 +7,6 @@
 [submodule "v4-hook/lib/openzeppelin-contracts"]
 	path = v4-hook/lib/openzeppelin-contracts
 	url = https://github.com/openZeppelin/openzeppelin-contracts
+[submodule "v4-hook/lib/permit2"]
+	path = v4-hook/lib/permit2
+	url = https://github.com/Uniswap/permit2
