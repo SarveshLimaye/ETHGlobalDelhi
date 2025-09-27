@@ -7,7 +7,7 @@ import {Pool} from "@uniswap/v4-core/src/libraries/Pool.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 
 library LiquidityManagerLib {
-    function getLiquidityRange(Pool.State storage state, int24 spacing, bool zeroForOne)
+    function getLiquidityRanges(Pool.State storage state, int24 spacing, bool zeroForOne)
         internal
         view
         returns (LiquidityRange memory active, LiquidityRange memory next)

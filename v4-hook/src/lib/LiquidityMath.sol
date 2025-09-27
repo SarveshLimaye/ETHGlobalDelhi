@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {LiquidityRange} from "../contracts/LiquidityRangeManager.sol";
+import {LiquidityRange} from "../LiquidityManager.sol";
 import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {BalanceDelta, toBalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
@@ -12,8 +12,8 @@ import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
 library LiquidityMath {
     using StateLibrary for IPoolManager;
 
-    /// @notice Computes asset delta for a given window
-    function _getAmountsDelta(IPoolManager pm, PoolId id, Window memory pos)
+    /// @notice Computes asset delta for a given range
+    function _getAmountsDelta(IPoolManager pm, PoolId id, LiquidityRange memory pos)
         private
         view
         returns (BalanceDelta delta)
@@ -57,8 +57,8 @@ library LiquidityMath {
         }
     }
 
-    /// @notice Returns amounts for a given liquidity window, negated for settlement
-    function getAmountsForLiquidity(IPoolManager pm, PoolId id, Window memory pos)
+    /// @notice Returns amounts for a given liquidity range, negated for settlement
+    function getAmountsForLiquidity(IPoolManager pm, PoolId id, LiquidityRange memory pos)
         internal
         view
         returns (BalanceDelta)
