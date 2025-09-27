@@ -296,7 +296,7 @@ contract LiquidityRangeManager is SafeCallback, Ownable {
 
 
 
-    function _jitModifyLiquidity(PoolKey memory key, bool zeroForOne, bool add) internal {
+    function _rebalanceLiquidity(PoolKey memory key, bool zeroForOne, bool add) internal {
         PoolId id = key.toId();
         Pool.State storage pool = _getPool(id);
 

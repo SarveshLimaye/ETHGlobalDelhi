@@ -22,11 +22,16 @@ contract DeployHookScript is BaseScript {
         (address hookAddress, bytes32 salt) =
             HookMiner.find(CREATE2_FACTORY, flags, type(RefluxHook).creationCode, constructorArgs);
 
+
+        // @dev - TODO - Update this addresses while deploying
+        address aavePool = address(1);
+        address weth = address(2);
+
         // Deploy the hook using CREATE2
         vm.startBroadcast();
-        RefluxHook counter = new RefluxHook{salt: salt}(poolManager);
+        RefluxHook refluxHook = new RefluxHook{salt: salt}(address(poolManager), aavePool, weth);
         vm.stopBroadcast();
 
-        require(address(counter) == hookAddress, "DeployHookScript: Hook Address Mismatch");
+        require(address(refluxHook) == hookAddress, "DeployHookScript: Hook Address Mismatch");
     }
 }
