@@ -1,10 +1,8 @@
-import { Header } from "@/components/LandingPage/header";
 import { HeroSection } from "@/components/LandingPage/hero-section";
 import { FeaturesSection } from "@/components/LandingPage/features-section";
 import { ArchitectureSection } from "@/components/LandingPage/architecture-section";
 import { StatsSection } from "@/components/LandingPage/stats-section";
 import { CTASection } from "@/components/LandingPage/cta-section";
-import { Footer } from "@/components/LandingPage/footer";
 import Head from "next/head";
 
 export default function HomePage() {
@@ -21,13 +19,13 @@ export default function HomePage() {
       </Head>
       <div className="min-h-screen bg-background">
         <div className="grid-pattern">
-          <Header />
+          {/* <Header /> */}
           <HeroSection />
           <FeaturesSection />
           <ArchitectureSection />
           <StatsSection />
           <CTASection />
-          <Footer />
+          {/* <Footer /> */}
         </div>
       </div>
     </>
