@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.25;
 
 import {LiquidityRange} from "../LiquidityManager.sol";
 import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";

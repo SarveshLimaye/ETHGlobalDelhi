@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.0;
 
 import {Pool, Slot0} from "@uniswap/v4-core/src/libraries/Pool.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
@@ -185,6 +185,22 @@ contract LiquidityRangeManager is SafeCallback, Ownable {
         if (d0 < 0) _settle(key.currency0, address(this), d0);
         if (d1 < 0) _settle(key.currency1, address(this), d1);
     }
+
+
+    /// @notice Initializes a new pool
+    /// @param key PoolKey
+    /// @param sqrtPriceX96 Initial sqrt price
+    /// @return tick Initial tick
+    function initialize(PoolKey memory key, uint160 sqrtPriceX96) public onlyOwner returns (int24 tick) {
+        uint24 lpFee = key.fee;
+        PoolId id = key.toId();
+        Pool.State storage pool = _getPool(id);
+        tick = pool.initialize(sqrtPriceX96, lpFee);
+        poolManager.initialize(key, sqrtPriceX96);
+        poolSpacing[id] = key.tickSpacing;
+    }
+
+
 
     function withdraw(address asset, uint128 amount) external onlyOwner {
         aavePool.safeWithdraw(asset, amount, msg.sender);
