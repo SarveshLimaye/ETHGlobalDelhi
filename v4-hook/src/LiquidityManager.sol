@@ -17,6 +17,8 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {AaveConfig, IPool, UpdateLiquidityAave, AaveSwapParams, PoolMetadata} from "src/strategies/AaveConfig.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
 import {LiquidityManagerLib} from "./lib/LiquidityManagerLib.sol";
+import "@pythnetwork/entropy-sdk-solidity/IEntropyV2.sol";
+import "@pythnetwork/entropy-sdk-solidity/IEntropyConsumer.sol";
 
 /// @notice Stores basic information about a user’s position
 struct PositionInfo {
@@ -47,7 +49,7 @@ struct LiquidityRange {
     bool initialized;
 }
 
-contract LiquidityRangeManager is SafeCallback, Ownable {
+contract LiquidityRangeManager is SafeCallback, Ownable , IEntropyConsumer{
     using Pool for Pool.State;
     using LiquidityManagerLib for Pool.State;
     using StateLibrary for IPoolManager;
@@ -70,6 +72,10 @@ contract LiquidityRangeManager is SafeCallback, Ownable {
 
     IWETH internal WETH;
 
+    IEntropyV2 entropy = IEntropyV2(0x7698E925FfC29655576D0b361D75Af579e20AdAc);
+
+    bytes32 pyth_random_salt;
+
     constructor(
         address poolManager,
         address _aavePool,
@@ -86,72 +92,92 @@ contract LiquidityRangeManager is SafeCallback, Ownable {
 
     function updateLiquidity(
         PoolKey memory key,
-    ModifyLiquidityParams memory params,
-    bytes32 _multiplier
-)
-    external
-    payable
-    returns (bytes32 positionId, BalanceDelta principalDelta, BalanceDelta feesAccrued)
-{
-    // ---- pre-loop work ----
-    (uint16 multiplier, int128 totalLiquidity, int24 nRanges) =
-        _preCalc(params, key, _multiplier);
+        ModifyLiquidityParams memory params,
+        bytes32 _multiplier
+    )
+        external
+        payable
+        returns (bytes32 positionId, BalanceDelta principalDelta, BalanceDelta feesAccrued)
+    {
+        uint256 fee = entropy.getFeeV2();
 
-    int24 lower = params.tickLower;
+        uint64 sequenceNumber = entropy.requestV2{ value: fee }();
+        // ---- pre-loop work ----
+        (uint16 multiplier, int128 totalLiquidity, int24 nRanges) =
+            _preCalc(params, key, _multiplier);
 
-    // ---- core loop (unchanged) ----
-    for (int24 i = 0; i < nRanges; i++) {
-        params.tickLower = lower;
-        params.tickUpper = lower + key.tickSpacing;
-        params.liquidityDelta = totalLiquidity;
+        int24 lower = params.tickLower;
 
-        (BalanceDelta pd, BalanceDelta fa) = _updateLiquidity(key, params);
-        principalDelta = principalDelta + pd;
-        feesAccrued = feesAccrued + fa;
+        // ---- core loop (unchanged) ----
+        for (int24 i = 0; i < nRanges; i++) {
+            params.tickLower = lower;
+            params.tickUpper = lower + key.tickSpacing;
+            params.liquidityDelta = totalLiquidity;
 
-        lower += key.tickSpacing;
+            (BalanceDelta pd, BalanceDelta fa) = _updateLiquidity(key, params);
+            principalDelta = principalDelta + pd;
+            feesAccrued = feesAccrued + fa;
+
+            lower += key.tickSpacing;
+        }
+
+        // ---- position update ----
+        positionId = _updatePositionInfo(key, params, multiplier);
+
+        _resolve(key, principalDelta + feesAccrued, positionId);
+        _sweep(key);
     }
 
-    // ---- position update ----
-    positionId = _updatePositionInfo(key, params, multiplier);
+    function entropyCallback(
+        uint64 sequenceNumber,
+        address provider,
+        bytes32 randomNumber
+    ) internal override {
+        pyth_random_salt = randomNumber;
+    }
 
-    _resolve(key, principalDelta + feesAccrued, positionId);
-    _sweep(key);
-}
+    function _preCalc(
+        ModifyLiquidityParams memory params,
+        PoolKey memory key,
+        bytes32 _multiplier
+    )
+        internal
+        returns (uint16 multiplier, int128 totalLiquidity, int24 nRanges)
+    {
+        multiplier = uint16(uint256(_multiplier));
+        int256 scaled = int256(params.liquidityDelta) * int256(uint256(multiplier));
+        require(scaled <= type(int128).max && scaled >= type(int128).min, "Overflow");
+        totalLiquidity = int128(scaled);
+        nRanges = (params.tickUpper - params.tickLower) / key.tickSpacing;
+    }
 
-function _preCalc(
-    ModifyLiquidityParams memory params,
-    PoolKey memory key,
-    bytes32 _multiplier
-)
-    internal
-    pure
-    returns (uint16 multiplier, int128 totalLiquidity, int24 nRanges)
-{
-    multiplier = uint16(uint256(_multiplier));
-    int256 scaled = int256(params.liquidityDelta) * int256(uint256(multiplier));
-    require(scaled <= type(int128).max && scaled >= type(int128).min, "Overflow");
-    totalLiquidity = int128(scaled);
-    nRanges = (params.tickUpper - params.tickLower) / key.tickSpacing;
-}
+    function _updatePositionInfo(
+        PoolKey memory key,
+        ModifyLiquidityParams memory params,
+        uint16 multiplier
+    )
+        internal
+        returns (bytes32 positionId)
+    {
+        positionId = Position.calculatePositionKey(msg.sender, params.tickLower, params.tickUpper, params.salt);
+        PositionInfo storage info = positionInfo[key.toId()][positionId];
 
-function _updatePositionInfo(
-    PoolKey memory key,
-    ModifyLiquidityParams memory params,
-    uint16 multiplier
-)
-    internal
-    returns (bytes32 positionId)
-{
-    positionId = Position.calculatePositionKey(msg.sender, params.tickLower, params.tickUpper, params.salt);
-    PositionInfo storage info = positionInfo[key.toId()][positionId];
+        info.owner = msg.sender;
+        info.tickLower = params.tickLower;
+        info.tickUpper = params.tickUpper;
+        info.liquidity = uint128(int128(info.liquidity) + int128(params.liquidityDelta));
+        info.multiplier = multiplier;
+    }
 
-    info.owner = msg.sender;
-    info.tickLower = params.tickLower;
-    info.tickUpper = params.tickUpper;
-    info.liquidity = uint128(int128(info.liquidity) + int128(params.liquidityDelta));
-    info.multiplier = multiplier;
-}
+    function getEntropyFee() public returns(uint256){
+        uint256 fee = entropy.getFeeV2();
+        return fee;
+    }
+    
+    function getEntropy() internal view override returns (address) {
+        return address(entropy);
+    }
+
      /// @notice Modify liquidity in the pool
     function _updateLiquidity(PoolKey memory key, ModifyLiquidityParams memory params)
         internal

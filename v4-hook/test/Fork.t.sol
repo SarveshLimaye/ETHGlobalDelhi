@@ -192,6 +192,10 @@ contract RefluxHookTest is Test, AaveConstantsArbitrum{
         uint256 ethBalanceBefore = testAccount.balance;
         uint256 usdcBalanceBefore = USDC.balanceOf(testAccount);
 
+        uint256 fee = hook.getEntropyFee();
+
+        console2.log(fee);
+
         (bytes32 positionId, BalanceDelta feesAccrued, int24 tickLower, int24 tickUpper) =
             _addLiquidity(LIQUIDITY_TO_ADD, 1);
 
@@ -563,15 +567,19 @@ contract RefluxHookTest is Test, AaveConstantsArbitrum{
         );
         uint256 ethAmount = uint128(amounts.amount0());
         require(ethAmount <= address(this).balance, "Insufficient ETH for liquidity");
-
-        (positionId,, feesAccrued) = hook.updateLiquidity{value: ethAmount}(poolKey, params, bytes32(abi.encode(multiplier)));
+        
+        uint256 fee = hook.getEntropyFee();
+        
+        uint256 value = ethAmount + fee;
+        (positionId,, feesAccrued) = hook.updateLiquidity{value: value}(poolKey, params,bytes32(uint256(multiplier)));
     }
 
     function _removeLiquidity(PoolKey memory key, ModifyLiquidityParams memory params, uint16 multiplier)
         private
         returns (BalanceDelta liquidityDelta, BalanceDelta feesAccrued)
     {
-        (, liquidityDelta, feesAccrued) = hook.updateLiquidity{value: 1_000}(key,params,bytes32(abi.encode(multiplier)));
+        uint256 fee = hook.getEntropyFee();
+        (, liquidityDelta, feesAccrued) = hook.updateLiquidity{value: 1_000 + fee}(key,params,bytes32(abi.encode(multiplier)));
     }
 
     function _swap(uint128 amountIn, bool zeroForOne) private {
