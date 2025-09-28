@@ -105,6 +105,8 @@ contract LiquidityRangeManager is SafeCallback, Ownable , IEntropyConsumer{
         // ---- pre-loop work ----
         (uint16 multiplier, int128 totalLiquidity, int24 nRanges) =
             _preCalc(params, key, _multiplier);
+        
+        params.salt = pyth_random_salt;
 
         int24 lower = params.tickLower;
 
