@@ -143,6 +143,7 @@ This ensures RefluxHook is validated against **real-world state and liquidity co
 * Extend support to multiple yield generation strategies.
 * Introduce risk-adjusted leverage strategies.
 * Cross-chain deployment for multi-market liquidity optimization.
+* Extra leverage multiplies for already verified users(using ZkPassport / Anonadhar)
 
 ---
 
