@@ -118,17 +118,20 @@ foundryup
 forge build
 ```
 
-**Run tests (local):**
+**Set up .env**
 
-```bash
-forge test -vv
+Add following RPC URL in .env - 
+
+```bash 
+ARBITRUM_RPC_URL=https://arb-mainnet.g.alchemy.com/v2/{API_KEY}
 ```
+
 
 **Run fork tests (Arbitrum mainnet):**
 We fork the **Arbitrum mainnet** to simulate interactions.
 
 ```bash
-forge test --fork-url https://arb-mainnet.g.alchemy.com/v2/<API_KEY> -vv
+forge test -vvv
 ```
 
 This ensures RefluxHook is validated against **real-world state and liquidity conditions**.
